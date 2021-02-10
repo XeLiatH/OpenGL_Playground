@@ -1,2 +1,6 @@
 ﻿  main.cpp
+C:\Users\matej\source\repos\opengl_game\main.cpp(9,10): warning C4067: unexpected tokens following preprocessor directive - expected a newline
+  Shader.cpp
+C:\Users\matej\source\repos\opengl_game\Shader.cpp(1,10): warning C4067: unexpected tokens following preprocessor directive - expected a newline
+  Generating Code...
   opengl_game.vcxproj -> C:\Users\matej\source\repos\opengl_game\x64\Debug\opengl_game.exe
