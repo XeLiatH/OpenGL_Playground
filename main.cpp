@@ -1,20 +1,62 @@
-// opengl_game.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
 #include <iostream>
+
+#include <opencv2\opencv.hpp>
+
+#include <GL/glew.h> 
+#include <GL/wglew.h>
+#include <GLFW/glfw3.h>
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void error_callback(int error, const char* description);
 
 int main()
 {
-    std::cout << "Hello World!\n";
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
+
+    int width = 800;
+    int height = 600;
+
+    GLFWwindow* pWindow = glfwCreateWindow(width, height, "Context", NULL, NULL);
+    if (!pWindow)
+    {
+        std::cout << "Error making a window" << std::endl;
+        glfwTerminate();
+        return -1;
+    }
+
+    glfwMakeContextCurrent(pWindow);
+    glViewport(0, 0, width, height);
+
+    glewInit();
+    wglewInit();
+
+    glfwSetErrorCallback(error_callback);
+    glfwSetFramebufferSizeCallback(pWindow, framebuffer_size_callback);
+
+    while (!glfwWindowShouldClose(pWindow))
+    {
+        // Render
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // Checking events
+        glfwSwapBuffers(pWindow);
+        glfwPollEvents();
+    }
+
+    glfwTerminate();
+    return 0;
 }
 
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+}
 
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
+void error_callback(int error, const char* description)
+{
+    std::cerr << "Error: " << description << std::endl;
+}
