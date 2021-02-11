@@ -7,6 +7,7 @@
 #include <GLFW/glfw3.h>
 
 #include "Shader.h";
+#include "Texture.h";
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void error_callback(int error, const char* description);
@@ -80,25 +81,7 @@ int main()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    unsigned int texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    std::string filename = "images/container.jpg";
-    cv::Mat image = cv::imread(filename, cv::IMREAD_UNCHANGED);
-    if (image.empty())
-    {
-        std::cerr << "ERROR::TEXTURE::FAILED_TO_READ_TEXTURE_IMAGE:" << filename << std::endl;
-    }
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image.cols, image.rows, 0, GL_BGR, GL_UNSIGNED_BYTE, image.data);
-    glGenerateMipmap(GL_TEXTURE_2D);
+    Texture texture("images/container.jpg");
 
     while (!glfwWindowShouldClose(pWindow))
     {
@@ -110,8 +93,7 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Bind texture
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture);
+        texture.bind();
 
         shader.use();
         glBindVertexArray(VAO);

@@ -9,5 +9,5 @@ uniform sampler2D fs_texture;
 
 void main()
 {
-    fs_color = texture(fs_texture, vs_tex); // * vec4(vs_color, 1.f);
+    fs_color = texture(fs_texture, vs_tex) * vec4(vs_color, 1.f);
 }
