@@ -16,6 +16,10 @@
 float delta_time = 0.0f;
 float last_frame = 0.0f;
 
+glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void error_callback(int error, const char* description);
 void processInput(GLFWwindow* window);
@@ -158,19 +162,6 @@ int main()
         glm::vec3(-1.3f,  1.0f, -1.5f)
     };
 
-    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-    glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-    glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
-    glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
-
-    glm::vec3 cameraRight = glm::normalize(glm::cross(up, cameraDirection));
-
-    glm::vec3 cameraUp = glm::cross(cameraDirection, cameraRight);
-
-    view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f),
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(0.0f, 1.0f, 0.0f));
-
     while (!glfwWindowShouldClose(pWindow))
     {
         float current_frame = glfwGetTime();
@@ -191,12 +182,7 @@ int main()
         shader.use();
         glBindVertexArray(VAO);
 
-        const float radius = 10.0f;
-        float camX = sin(glfwGetTime()) * radius;
-        float camZ = cos(glfwGetTime()) * radius;
-        glm::mat4 view;
-        view = glm::lookAt(glm::vec3(camX, 0.0, camZ), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
-
+        view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         shader.setMat4("view", view);
 
         // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -239,4 +225,14 @@ void processInput(GLFWwindow* window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+
+    const float cameraSpeed = 2.5f * delta_time;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        cameraPos += cameraSpeed * cameraFront;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        cameraPos -= cameraSpeed * cameraFront;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
 }
