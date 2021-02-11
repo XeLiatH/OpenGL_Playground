@@ -29,7 +29,10 @@ void Texture::loadFromFile(std::string filePath, bool transparent)
     glTexParameteri(this->type, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(this->type, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    cv::Mat image = cv::imread(filePath, cv::IMREAD_UNCHANGED);
+    cv::Mat image;
+    cv::Mat source = cv::imread(filePath, cv::IMREAD_UNCHANGED);
+    cv::flip(source, image, 0);
+
     if (image.empty())
     {
         std::cerr << "ERROR::TEXTURE::FAILED_TO_READ_TEXTURE_IMAGE:" << filePath << std::endl;
