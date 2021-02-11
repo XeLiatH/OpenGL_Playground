@@ -2,7 +2,7 @@
 
 out vec4 fs_color;
 
-in vec3 vs_color;
+// in vec3 vs_color;
 in vec2 vs_tex;
 
 uniform sampler2D texture1;
