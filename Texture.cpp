@@ -1,7 +1,9 @@
 #include "Texture.h";
 
-Texture::Texture(std::string filePath, bool transparent)
+Texture::Texture(GLenum type, std::string filePath, bool transparent)
 {
+    this->type = type;
+
     loadFromFile(filePath, transparent);
 }
 
@@ -10,22 +12,22 @@ Texture::~Texture()
     glDeleteTextures(1, &this->id);
 }
 
-void Texture::bind()
+void Texture::bind(GLenum textureUnit)
 {
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, this->id);
+    glActiveTexture(textureUnit);
+    glBindTexture(this->type, this->id);
 }
 
 void Texture::loadFromFile(std::string filePath, bool transparent)
 {
     glGenTextures(1, &this->id);
-    glBindTexture(GL_TEXTURE_2D, this->id);
+    glBindTexture(this->type, this->id);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(this->type, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(this->type, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(this->type, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(this->type, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     cv::Mat image = cv::imread(filePath, cv::IMREAD_UNCHANGED);
     if (image.empty())
@@ -34,8 +36,8 @@ void Texture::loadFromFile(std::string filePath, bool transparent)
     }
     else
     {
-        glTexImage2D(GL_TEXTURE_2D, 0, transparent ? GL_RGBA : GL_RGB, image.cols, image.rows, 0, transparent ? GL_BGRA : GL_BGR, GL_UNSIGNED_BYTE, image.data);
-        glGenerateMipmap(GL_TEXTURE_2D);
+        glTexImage2D(this->type, 0, transparent ? GL_RGBA : GL_RGB, image.cols, image.rows, 0, transparent ? GL_BGRA : GL_BGR, GL_UNSIGNED_BYTE, image.data);
+        glGenerateMipmap(this->type);
     }
 
 }

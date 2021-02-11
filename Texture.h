@@ -14,17 +14,16 @@
 class Texture
 {
 public:
-    Texture(std::string filePath, bool transparent = false);
+    Texture(GLenum type, std::string filePath, bool transparent = false);
     ~Texture();
 
-    void bind();
+    void bind(GLenum textureUnit);
 
 private:
     unsigned int id;
+    GLenum type;
 
     void loadFromFile(std::string filePath, bool transparent);
-
 };
-
 
 #endif

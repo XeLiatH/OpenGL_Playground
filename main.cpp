@@ -81,7 +81,12 @@ int main()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    Texture texture("images/container.jpg");
+    Texture texture1(GL_TEXTURE_2D, "images/container.jpg");
+    Texture texture2(GL_TEXTURE_2D, "images/awesomeface.png", true);
+    
+    shader.use();
+    shader.setInt("texture1", 0);
+    shader.setInt("texture2", 1);
 
     while (!glfwWindowShouldClose(pWindow))
     {
@@ -93,7 +98,8 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Bind texture
-        texture.bind();
+        texture1.bind(GL_TEXTURE0);
+        texture2.bind(GL_TEXTURE1);
 
         shader.use();
         glBindVertexArray(VAO);
