@@ -39,29 +39,24 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "Camera.h";
+
 #include "Shader.h";
 #include "Texture.h";
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-struct Camera
-{
-    glm::vec3 position = glm::vec3(0.0f, 0.0f, 3.0f);
-    glm::vec3 front = glm::vec3(0.0f, 0.0f, -1.0f);
-    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-
-    bool firstMouse = true;
-    float lastX = 400, lastY = 300;
-    float yaw = -90.0f;
-    float pitch = 0.0f;
-    float fov = 45.0f;
-} camera;
+bool firstMouse = true;
+float lastX = 400.f;
+float lastY = 300.f;
 
 struct Light
 {
     glm::vec3 position = glm::vec3(1.2f, 1.0f, 2.0f);
 } light;
+
+Camera* camera;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -82,8 +77,10 @@ int main()
     int width = 1366; // mode->width;
     int height = 768; // mode->height;
 
-    camera.lastX = width / 2;
-    camera.lastY = height / 2;
+    camera = new Camera();
+
+    lastX = width / 2;
+    lastY = height / 2;
 
     GLFWwindow* pWindow = glfwCreateWindow(width, height, "Context", NULL, NULL);
     if (!pWindow)
@@ -213,7 +210,7 @@ int main()
     view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
 
     glm::mat4 projection;
-    projection = glm::perspective(glm::radians(camera.fov), 800.0f / 600.0f, 0.1f, 100.0f);
+    projection = glm::perspective(glm::radians(camera->getFov()), 800.0f / 600.0f, 0.1f, 100.0f);
 
     shader.setMat4("model", model);
     shader.setMat4("view", view);
@@ -238,12 +235,6 @@ int main()
     };
 
     glfwSetInputMode(pWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-    glm::vec3 direction;
-
-    direction.x = cos(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-    direction.y = sin(glm::radians(camera.pitch));
-    direction.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
 
     while (!glfwWindowShouldClose(pWindow))
     {
@@ -299,8 +290,8 @@ int main()
         shader.setFloat("pointLights[3].linear", 0.09);
         shader.setFloat("pointLights[3].quadratic", 0.032);
         // spotLight
-        shader.setVec3("spotLight.position", camera.position);
-        shader.setVec3("spotLight.direction", camera.front);
+        shader.setVec3("spotLight.position", camera->getPosition());
+        shader.setVec3("spotLight.direction", camera->getFront());
         shader.setVec3("spotLight.ambient", glm::vec3(0.0f, 0.0f, 0.0f));
         shader.setVec3("spotLight.diffuse", glm::vec3(1.0f, 1.0f, 1.0f));
         shader.setVec3("spotLight.specular", glm::vec3(1.0f, 1.0f, 1.0f));
@@ -310,8 +301,8 @@ int main()
         shader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
         shader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
 
-        shader.setVec3("light.position", camera.position);
-        shader.setVec3("light.direction", camera.front);
+        shader.setVec3("light.position", camera->getPosition());
+        shader.setVec3("light.direction", camera->getFront());
         shader.setFloat("light.cutOff", glm::cos(glm::radians(12.5f)));
         shader.setFloat("light.outerCutOff", glm::cos(glm::radians(17.5f)));
 
@@ -323,7 +314,7 @@ int main()
         shader.setFloat("light.linear", 0.09f);
         shader.setFloat("light.quadratic", 0.032f);
 
-        shader.setVec3("view_position", camera.position);
+        shader.setVec3("view_position", camera->getPosition());
 
         // Bind texture
         texture.bind(GL_TEXTURE0);
@@ -333,10 +324,10 @@ int main()
         glBindVertexArray(VAO);
 
         glm::mat4 projection;
-        projection = glm::perspective(glm::radians(camera.fov), 800.0f / 600.0f, 0.1f, 100.0f);
+        projection = glm::perspective(glm::radians(camera->getFov()), 800.0f / 600.0f, 0.1f, 100.0f);
         shader.setMat4("projection", projection);
 
-        view = glm::lookAt(camera.position, camera.position + camera.front, camera.up);
+        view = camera->getViewMatrix();
         shader.setMat4("view", view);
 
         for (unsigned int i = 0; i < 10; i++)
@@ -382,44 +373,25 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
-    if (camera.firstMouse)
+    if (firstMouse)
     {
-        camera.lastX = xpos;
-        camera.lastY = ypos;
-        camera.firstMouse = false;
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
     }
 
-    float xoffset = xpos - camera.lastX;
-    float yoffset = camera.lastY - ypos;
-    camera.lastX = xpos;
-    camera.lastY = ypos;
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos;
 
-    float sensitivity = 0.1f;
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
+    lastX = xpos;
+    lastY = ypos;
 
-    camera.yaw += xoffset;
-    camera.pitch += yoffset;
-
-    if (camera.pitch > 89.0f)
-        camera.pitch = 89.0f;
-    if (camera.pitch < -89.0f)
-        camera.pitch = -89.0f;
-
-    glm::vec3 direction;
-    direction.x = cos(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-    direction.y = sin(glm::radians(camera.pitch));
-    direction.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-    camera.front = glm::normalize(direction);
+    camera->ProcessMouseMovement(xoffset, yoffset);
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-    camera.fov -= (float)yoffset;
-    if (camera.fov < 1.0f)
-        camera.fov = 1.0f;
-    if (camera.fov > 45.0f)
-        camera.fov = 45.0f;
+    camera->procesZoom(yoffset);
 }
 
 void error_callback(int error, const char* description)
@@ -432,16 +404,12 @@ void processInput(GLFWwindow* window)
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    float cameraSpeed = 2.5f * deltaTime;
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-        cameraSpeed = 12.5f * deltaTime;
-
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera.position += cameraSpeed * camera.front;
+        camera->ProcessKeyboard(CameraMovement::FORWARD, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera.position -= cameraSpeed * camera.front;
+        camera->ProcessKeyboard(CameraMovement::BACKWARD, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera.position -= glm::normalize(glm::cross(camera.front, camera.up)) * cameraSpeed;
+        camera->ProcessKeyboard(CameraMovement::LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera.position += glm::normalize(glm::cross(camera.front, camera.up)) * cameraSpeed;
+        camera->ProcessKeyboard(CameraMovement::RIGHT, deltaTime);
 }
