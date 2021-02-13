@@ -221,8 +221,6 @@ int main()
     direction.y = sin(glm::radians(camera.pitch));
     direction.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
 
-    shader.setVec3("light_color", glm::vec3(1.0f, 1.0f, 1.0f));
-
     while (!glfwWindowShouldClose(pWindow))
     {
         float current_frame = glfwGetTime();
@@ -239,7 +237,24 @@ int main()
         light.position.x = 1.0f + sin(glfwGetTime()) * 2.0f;
         light.position.y = sin(glfwGetTime() / 2.0f) * 1.0f;
 
-        shader.setVec3("light_position", light.position);
+        shader.setVec3("material.ambient", glm::vec3(1.0f, 0.5f, 0.31f));
+        shader.setVec3("material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f));
+        shader.setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+        shader.setFloat("material.shininess", 32.0f);
+
+        glm::vec3 lightColor;
+        lightColor.x = sin(glfwGetTime() * 2.0f);
+        lightColor.y = sin(glfwGetTime() * 0.7f);
+        lightColor.z = sin(glfwGetTime() * 1.3f);
+
+        glm::vec3 diffuseColor = lightColor * glm::vec3(0.5f);
+        glm::vec3 ambientColor = diffuseColor * glm::vec3(0.2f);
+
+        shader.setVec3("light.position", light.position);
+        shader.setVec3("light.ambient", ambientColor);
+        shader.setVec3("light.diffuse", diffuseColor);
+        shader.setVec3("light.specular", 10.f * glm::vec3(1.f, 1.f, 1.f));
+
         shader.setVec3("view_position", camera.position);
 
         // Bind texture
