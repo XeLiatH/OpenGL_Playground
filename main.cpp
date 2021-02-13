@@ -180,12 +180,13 @@ int main()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    Texture texture1(GL_TEXTURE_2D, "images/container.jpg");
-    Texture texture2(GL_TEXTURE_2D, "images/awesomeface.png", true);
+    Texture texture(GL_TEXTURE_2D, "images/container2.png", true);
+    Texture texture_specular(GL_TEXTURE_2D, "images/container2_specular.png", true);
     
     shader.use();
-    shader.setInt("texture1", 0);
-    shader.setInt("texture2", 1);
+    shader.setInt("material.diffuse", 0);
+    shader.setInt("material.specular", 1);
+    //shader.setInt("texture2", 1);
 
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
@@ -237,9 +238,6 @@ int main()
         light.position.x = 1.0f + sin(glfwGetTime()) * 2.0f;
         light.position.y = sin(glfwGetTime() / 2.0f) * 1.0f;
 
-        shader.setVec3("material.ambient", glm::vec3(1.0f, 0.5f, 0.31f));
-        shader.setVec3("material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f));
-        shader.setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
         shader.setFloat("material.shininess", 32.0f);
 
         glm::vec3 lightColor;
@@ -253,13 +251,13 @@ int main()
         shader.setVec3("light.position", light.position);
         shader.setVec3("light.ambient", ambientColor);
         shader.setVec3("light.diffuse", diffuseColor);
-        shader.setVec3("light.specular", 10.f * glm::vec3(1.f, 1.f, 1.f));
+        shader.setVec3("light.specular", 5.f * glm::vec3(1.f, 1.f, 1.f));
 
         shader.setVec3("view_position", camera.position);
 
         // Bind texture
-        texture1.bind(GL_TEXTURE0);
-        texture2.bind(GL_TEXTURE1);
+        texture.bind(GL_TEXTURE0);
+        texture_specular.bind(GL_TEXTURE1);
 
         shader.use();
         glBindVertexArray(VAO);
