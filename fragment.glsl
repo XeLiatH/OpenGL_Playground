@@ -7,33 +7,12 @@ in vec3 vs_normal;
 in vec2 vs_tex;
 
 struct Material {
-    sampler2D   diffuse;
-    sampler2D   specular;
-    float       shininess;
+    sampler2D diffuse;
+    sampler2D specular;
+    float shininess;
 };
 
-struct Light {
-    vec3 position;
-    vec3  direction;
-    float cutOff;
-    float outerCutOff;
-
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-
-    float constant;
-    float linear;
-    float quadratic;
-};
-
-uniform Material material;
-uniform Light light;
-
-uniform vec3 view_position;
-
-// Basically sun
-struct DirLight {
+struct DirLight { // Basically sun
     vec3 direction;
 
     vec3 ambient;
@@ -41,22 +20,17 @@ struct DirLight {
     vec3 specular;
 };
 
-uniform DirLight dirLight;
-
-struct PointLight {    
+struct PointLight {
     vec3 position;
     
     float constant;
     float linear;
-    float quadratic;  
+    float quadratic;
 
     vec3 ambient;
     vec3 diffuse;
     vec3 specular;
-}; 
-
-#define NR_POINT_LIGHTS 4
-uniform PointLight pointLights[NR_POINT_LIGHTS]; 
+};
 
 struct SpotLight {
     vec3 position;
@@ -70,10 +44,17 @@ struct SpotLight {
   
     vec3 ambient;
     vec3 diffuse;
-    vec3 specular;       
+    vec3 specular;
 };
 
+#define NR_POINT_LIGHTS 4
+
+uniform vec3 view_position;
+
+uniform Material material;
+uniform DirLight dirLight;
 uniform SpotLight spotLight;
+uniform PointLight pointLights[NR_POINT_LIGHTS]; 
 
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir);
 vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
@@ -93,8 +74,6 @@ void main()
     result += CalcSpotLight(spotLight, norm, fs_position, viewDir);    
 
     fs_color = vec4(result, 1.0);
-
-    vec3 light_direction = normalize(light.position - fs_position);
 }
 
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
