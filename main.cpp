@@ -60,7 +60,7 @@ struct Camera
 
 struct Light
 {
-    glm::vec3 position = glm::vec3(0.f, 1.f, 2.0f);
+    glm::vec3 position = glm::vec3(1.2f, 1.0f, 2.0f);
 } light;
 
 
@@ -78,8 +78,13 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
 
-    int width = 800;
-    int height = 600;
+    // const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+
+    int width = 1366; // mode->width;
+    int height = 768; // mode->height;
+
+    camera.lastX = width / 2;
+    camera.lastY = height / 2;
 
     GLFWwindow* pWindow = glfwCreateWindow(width, height, "Context", NULL, NULL);
     if (!pWindow)
@@ -95,6 +100,9 @@ int main()
     glewInit();
     wglewInit();
 
+    // switch to full screen
+    //glfwSetWindowMonitor(pWindow, glfwGetPrimaryMonitor(), 0, 0, mode->width, mode->height, 0);
+
     glEnable(GL_DEPTH_TEST);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
@@ -104,6 +112,7 @@ int main()
     glfwSetScrollCallback(pWindow, scroll_callback);
 
     Shader shader("vertex.glsl", "fragment.glsl");
+    Shader pointLight("vertex_light.glsl", "fragment_light.glsl");
 
     float vertices[] = {
         -0.5f, -0.5f, -0.5f, 0.0f,  0.0f, -1.0f, 0.0f, 0.0f,
@@ -180,6 +189,15 @@ int main()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
+    unsigned int lightCubeVAO;
+    glGenVertexArrays(1, &lightCubeVAO);
+    glBindVertexArray(lightCubeVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // note that we update the lamp's position attribute's stride to reflect the updated buffer data
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
     Texture texture(GL_TEXTURE_2D, "images/container2.png", true);
     Texture texture_specular(GL_TEXTURE_2D, "images/container2_specular.png", true);
     
@@ -232,26 +250,24 @@ int main()
         processInput(pWindow);
 
         // Render
-        glClearColor(0.f, 0.f, 0.f, 1.0f);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        light.position.x = 1.0f + sin(glfwGetTime()) * 2.0f;
-        light.position.y = sin(glfwGetTime() / 2.0f) * 1.0f;
-
+        shader.use();
         shader.setFloat("material.shininess", 32.0f);
 
-        glm::vec3 lightColor;
-        lightColor.x = sin(glfwGetTime() * 2.0f);
-        lightColor.y = sin(glfwGetTime() * 0.7f);
-        lightColor.z = sin(glfwGetTime() * 1.3f);
+        shader.setVec3("light.position", camera.position);
+        shader.setVec3("light.direction", camera.front);
+        shader.setFloat("light.cutOff", glm::cos(glm::radians(12.5f)));
+        shader.setFloat("light.outerCutOff", glm::cos(glm::radians(17.5f)));
 
-        glm::vec3 diffuseColor = lightColor * glm::vec3(0.5f);
-        glm::vec3 ambientColor = diffuseColor * glm::vec3(0.2f);
+        shader.setVec3("light.ambient", glm::vec3(0.2f, 0.2f, 0.2f));
+        shader.setVec3("light.diffuse", glm::vec3(0.5f, 0.5f, 0.5f));
+        shader.setVec3("light.specular", 1.f * glm::vec3(1.f, 1.f, 1.f));
 
-        shader.setVec3("light.position", light.position);
-        shader.setVec3("light.ambient", ambientColor);
-        shader.setVec3("light.diffuse", diffuseColor);
-        shader.setVec3("light.specular", 5.f * glm::vec3(1.f, 1.f, 1.f));
+        shader.setFloat("light.constant", 1.0f);
+        shader.setFloat("light.linear", 0.09f);
+        shader.setFloat("light.quadratic", 0.032f);
 
         shader.setVec3("view_position", camera.position);
 
@@ -281,6 +297,18 @@ int main()
 
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
+
+        // also draw the lamp object
+        /*pointLight.use();
+        pointLight.setMat4("projection", projection);
+        pointLight.setMat4("view", view);
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, light.position);
+        model = glm::scale(model, glm::vec3(0.2f)); // a smaller cube
+        pointLight.setMat4("model", model);
+
+        glBindVertexArray(lightCubeVAO);
+        glDrawArrays(GL_TRIANGLES, 0, 36);*/
 
         // Checking events
         glfwSwapBuffers(pWindow);
@@ -348,7 +376,10 @@ void processInput(GLFWwindow* window)
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    const float cameraSpeed = 2.5f * deltaTime;
+    float cameraSpeed = 2.5f * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+        cameraSpeed = 12.5f * deltaTime;
+
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         camera.position += cameraSpeed * camera.front;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
