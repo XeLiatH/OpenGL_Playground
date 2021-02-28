@@ -19,9 +19,11 @@ void Camera::ProcessKeyboard(CameraMovement direction, float deltaTime)
     if (direction == CameraMovement::BACKWARD)
         this->position -= this->front * velocity;
     if (direction == CameraMovement::LEFT)
-        this->position -= this->right * velocity;
+        this->yaw -= 50.f * velocity;
     if (direction == CameraMovement::RIGHT)
-        this->position += this->right * velocity;
+        this->yaw += 50.f * velocity;
+
+    this->Update();
 }
 
 void Camera::ProcessMouseMovement(float xoffset, float yoffset, bool constrainPitch)
@@ -38,6 +40,8 @@ void Camera::ProcessMouseMovement(float xoffset, float yoffset, bool constrainPi
         if (this->pitch > 89.0f) this->pitch = 89.0f;
         if (this->pitch < -89.0f) this->pitch = -89.0f;
     }
+
+    // glm::vec4 position = glm::rotate()
 
     this->Update();
 }
