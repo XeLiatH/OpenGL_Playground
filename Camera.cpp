@@ -23,6 +23,8 @@ void Camera::ProcessKeyboard(CameraMovement direction, float deltaTime)
     if (direction == CameraMovement::RIGHT)
         this->yaw += 50.f * velocity;
 
+    this->position.y = 0.0f;
+
     this->Update();
 }
 
