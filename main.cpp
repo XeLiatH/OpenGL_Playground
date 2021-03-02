@@ -36,14 +36,13 @@
 #include "Model.h";
 #include "Skybox.h";
 
-float deltaTime = 0.0f;
-float lastFrame = 0.0f;
+float _deltaTime = 0.0f;
+float _lastFrame = 0.0f;
 
-bool firstMouse = true;
-bool mousePressed = false;
+bool _mouseLeftPressed = false;
 
-float lastX;
-float lastY;
+float _lastX;
+float _lastY;
 
 struct Light
 {
@@ -74,8 +73,8 @@ int main()
     int width = pWindowMode->width;
     int height = pWindowMode->height;
 
-    lastX = width / 2;
-    lastY = height / 2;
+    _lastX = width / 2;
+    _lastY = height / 2;
 
     _pCamera = new Camera(glm::vec3(0.f, 0.f, 10.f));
 
@@ -135,8 +134,8 @@ int main()
     while (!glfwWindowShouldClose(_pWindow))
     {
         float current_frame = glfwGetTime();
-        deltaTime = current_frame - lastFrame;
-        lastFrame = current_frame;
+        _deltaTime = current_frame - _lastFrame;
+        _lastFrame = current_frame;
 
         // Input
         processInput(_pWindow);
@@ -226,31 +225,29 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
-    if (firstMouse)
+    static bool first = true;
+    if (first)
     {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
+        _lastX = xpos;
+        _lastY = ypos;
+        first = false;
     }
 
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos;
+    _pCamera->ProcessMouseMovement(xpos - _lastX, _lastY - ypos);
 
-    lastX = xpos;
-    lastY = ypos;
-
-    _pCamera->ProcessMouseMovement(xoffset, yoffset);
+    _lastX = xpos;
+    _lastY = ypos;
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
     {
-        mousePressed = true;
+        _mouseLeftPressed = true;
     }
     else
     {
-        mousePressed = false;
+        _mouseLeftPressed = false;
     }
 }
 
@@ -292,11 +289,11 @@ void processInput(GLFWwindow* window)
 {
     // Movement
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        _pCamera->ProcessKeyboard(CameraMovement::FORWARD, deltaTime);
+        _pCamera->ProcessKeyboard(CameraMovement::FORWARD, _deltaTime);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        _pCamera->ProcessKeyboard(CameraMovement::BACKWARD, deltaTime);
+        _pCamera->ProcessKeyboard(CameraMovement::BACKWARD, _deltaTime);
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        _pCamera->ProcessKeyboard(CameraMovement::LEFT, deltaTime);
+        _pCamera->ProcessKeyboard(CameraMovement::LEFT, _deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        _pCamera->ProcessKeyboard(CameraMovement::RIGHT, deltaTime);
+        _pCamera->ProcessKeyboard(CameraMovement::RIGHT, _deltaTime);
 }

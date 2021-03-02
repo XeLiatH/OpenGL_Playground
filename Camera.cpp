@@ -23,7 +23,7 @@ void Camera::ProcessKeyboard(CameraMovement direction, float deltaTime)
     if (direction == CameraMovement::RIGHT)
         this->position += this->right * velocity;
 
-    this->position.y = 0.0f;
+    this->position.y = 1.f; // fixate the camera in an FPS style
 
     this->Update();
 }
@@ -39,11 +39,9 @@ void Camera::ProcessMouseMovement(float xoffset, float yoffset, bool constrainPi
     // make sure that when pitch is out of bounds, screen doesn't get flipped
     if (constrainPitch)
     {
-        if (this->pitch > 89.0f) this->pitch = 89.0f;
-        if (this->pitch < -89.0f) this->pitch = -89.0f;
+        if (this->pitch > 89.f) this->pitch = 89.f;
+        if (this->pitch < -89.f) this->pitch = -89.f;
     }
-
-    // glm::vec4 position = glm::rotate()
 
     this->Update();
 }
@@ -52,8 +50,8 @@ void Camera::procesZoom(float yoffset)
 {
     this->fov -= (float)yoffset;
     
-    if (this->fov < 1.0f) this->fov = 1.0f;
-    if (this->fov > 45.0f) this->fov = 45.0f;
+    if (this->fov < 1.f) this->fov = 1.f;
+    if (this->fov > 45.f) this->fov = 45.f;
 }
 
 float Camera::getFov() const
