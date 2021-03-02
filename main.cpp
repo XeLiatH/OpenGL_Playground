@@ -2,32 +2,19 @@
 
   +-------------------------------------------------+
   |                                                 |
-  | BONE BREAKAAAR                                  |
+  | OPENGL GAME                                     |
   | ==============                                  |
   |                                                 |
   | * Author:       Matěj Beran<matej.beran@tul.cz> |
-  | * Date:         02/2021                         |
+  | * Date:         03/2021                         |
   | * GL Version:   3.3                             |
-  |                                                 |
-  | SPECIFICATION                                   |
-  | =============                                   |
-  | [ ] ground                                      |
-  | [ ] with borders                                |
-  | [ ] player spawns inside                        |
-  | [ ] player has to dodge falling blocks          |
-  | [ ] light in each corner                        |
-  | [ ] red sun                                     |
-  | [ ] space sky box                               |
-  | [ ] collision                                   |
-  | [ ] transparent blocks (ice looking)            |
-  | [ ] swapping textures at runtime                |
-  | [ ] rotating cubes changing color over time     |
-  | [ ] speed increased with time                   |
   +-------------------------------------------------+
 
 */
 
 #define GAME_NAME "** Super Awesome Game **"
+
+#define SKYBOX "skybox_hot"
 
 #include <iostream>
 
@@ -54,20 +41,23 @@ float lastFrame = 0.0f;
 
 bool firstMouse = true;
 bool mousePressed = false;
-float lastX = 400.f;
-float lastY = 300.f;
+
+float lastX;
+float lastY;
 
 struct Light
 {
     glm::vec3 position = glm::vec3(1.2f, 1.0f, 2.0f);
 } light;
 
-Camera* camera; 
+GLFWwindow* _pWindow;
+Camera* _pCamera;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void keyboard_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void error_callback(int error, const char* description);
 
 void processInput(GLFWwindow* window);
@@ -79,42 +69,41 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
 
-    // const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+    const GLFWvidmode* pWindowMode = glfwGetVideoMode(glfwGetPrimaryMonitor());
 
-    int width = 1366; // mode->width;
-    int height = 768; // mode->height;
-
-    camera = new Camera(glm::vec3(0.f, 0.f, 10.f));
+    int width = pWindowMode->width;
+    int height = pWindowMode->height;
 
     lastX = width / 2;
     lastY = height / 2;
 
-    GLFWwindow* pWindow = glfwCreateWindow(width, height, GAME_NAME, NULL, NULL);
-    if (!pWindow)
+    _pCamera = new Camera(glm::vec3(0.f, 0.f, 10.f));
+
+    _pWindow = glfwCreateWindow(width, height, GAME_NAME, NULL, NULL);
+    if (!_pWindow)
     {
         std::cout << "Error making a window" << std::endl;
         glfwTerminate();
         return -1;
     }
 
-    glfwMakeContextCurrent(pWindow);
+    glfwSetInputMode(_pWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    glfwMakeContextCurrent(_pWindow);
     glViewport(0, 0, width, height);
 
     glewInit();
     wglewInit();
 
-    // switch to full screen
-    //glfwSetWindowMonitor(pWindow, glfwGetPrimaryMonitor(), 0, 0, mode->width, mode->height, 0);
-    //glfwSetInputMode(pWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
     glEnable(GL_DEPTH_TEST);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     glfwSetErrorCallback(error_callback);
-    glfwSetFramebufferSizeCallback(pWindow, framebuffer_size_callback);
-    glfwSetMouseButtonCallback(pWindow, mouse_button_callback);
-    glfwSetCursorPosCallback(pWindow, mouse_callback);
-    glfwSetScrollCallback(pWindow, scroll_callback);
+    glfwSetFramebufferSizeCallback(_pWindow, framebuffer_size_callback);
+    glfwSetMouseButtonCallback(_pWindow, mouse_button_callback);
+    glfwSetCursorPosCallback(_pWindow, mouse_callback);
+    glfwSetScrollCallback(_pWindow, scroll_callback);
+    glfwSetKeyCallback(_pWindow, keyboard_callback);
 
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
@@ -123,7 +112,7 @@ int main()
     view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
 
     glm::mat4 projection;
-    projection = glm::perspective(glm::radians(camera->getFov()), (float)width / (float)height, 0.1f, 100.0f);
+    projection = glm::perspective(glm::radians(_pCamera->getFov()), (float)width / (float)height, 0.1f, 100.0f);
 
     Shader shader("vertex.glsl", "fragment.glsl");
     Shader skyboxShader("skybox_vertex.glsl", "skybox_fragment.glsl");
@@ -132,6 +121,7 @@ int main()
     shader.setMat4("view", view);
 
     Model _model("models/backpack/backpack.obj");
+    Model _floor("models/floor_tile/floor.obj");
 
     glm::vec3 pointLightPositions[] = {
         glm::vec3(0.7f,  0.2f,  2.0f),
@@ -140,26 +130,16 @@ int main()
         glm::vec3(0.0f,  0.0f, -3.0f)
     };
 
-    std::vector<std::string> faces
-    {
-        "skybox_hot/right.png",
-        "skybox_hot/left.png",
-        "skybox_hot/top.png",
-        "skybox_hot/bottom.png",
-        "skybox_hot/front.png",
-        "skybox_hot/back.png"
-    };
+    Skybox skybox(SKYBOX);
 
-    Skybox skybox(faces);
-
-    while (!glfwWindowShouldClose(pWindow))
+    while (!glfwWindowShouldClose(_pWindow))
     {
         float current_frame = glfwGetTime();
         deltaTime = current_frame - lastFrame;
         lastFrame = current_frame;
 
         // Input
-        processInput(pWindow);
+        processInput(_pWindow);
 
         // Render
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -175,8 +155,8 @@ int main()
         shader.setVec3("dirLight.diffuse", glm::vec3(0.4f, 0.4f, 0.4f));
         shader.setVec3("dirLight.specular", glm::vec3(0.5f, 0.5f, 0.5f));
         // spotLight
-        shader.setVec3("spotLight.position", camera->getPosition());
-        shader.setVec3("spotLight.direction", camera->getFront());
+        shader.setVec3("spotLight.position", _pCamera->getPosition());
+        shader.setVec3("spotLight.direction", _pCamera->getFront());
         shader.setVec3("spotLight.ambient", glm::vec3(0.0f, 0.0f, 0.0f));
         shader.setVec3("spotLight.diffuse", glm::vec3(1.0f, 1.0f, 1.0f));
         shader.setVec3("spotLight.specular", glm::vec3(1.0f, 1.0f, 1.0f));
@@ -186,8 +166,8 @@ int main()
         shader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
         shader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
 
-        shader.setVec3("light.position", camera->getPosition());
-        shader.setVec3("light.direction", camera->getFront());
+        shader.setVec3("light.position", _pCamera->getPosition());
+        shader.setVec3("light.direction", _pCamera->getFront());
         shader.setFloat("light.cutOff", glm::cos(glm::radians(12.5f)));
         shader.setFloat("light.outerCutOff", glm::cos(glm::radians(17.5f)));
 
@@ -199,12 +179,12 @@ int main()
         shader.setFloat("light.linear", 0.09f);
         shader.setFloat("light.quadratic", 0.032f);
 
-        shader.setVec3("view_position", camera->getPosition());
+        shader.setVec3("view_position", _pCamera->getPosition());
 
-        view = camera->getViewMatrix();
+        view = _pCamera->getViewMatrix();
         shader.setMat4("view", view);
 
-        glm::mat4 projection = glm::perspective(glm::radians(camera->getFov()), (float)width / (float)height, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(_pCamera->getFov()), (float)width / (float)height, 0.1f, 100.0f);
         shader.setMat4("projection", projection);
 
         glm::mat4 model = glm::mat4(1.0f);
@@ -214,7 +194,13 @@ int main()
         shader.setMat4("model", model);
         _model.Draw(shader);
 
-        view = glm::mat4(glm::mat3(camera->getViewMatrix())); // remove translation from the view matrix
+        model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f)); // translate it down so it's at the center of the scene
+        model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));	// it's a bit too big for our scene, so scale it down
+
+        shader.setMat4("model", model);
+        _floor.Draw(shader);
+
+        view = glm::mat4(glm::mat3(_pCamera->getViewMatrix())); // remove translation from the view matrix
         
         // draw skybox as last
         glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
@@ -225,7 +211,7 @@ int main()
         skybox.Draw(skyboxShader);
 
         // Checking events
-        glfwSwapBuffers(pWindow);
+        glfwSwapBuffers(_pWindow);
         glfwPollEvents();
     }
 
@@ -253,7 +239,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
     lastX = xpos;
     lastY = ypos;
 
-    camera->ProcessMouseMovement(xoffset, yoffset);
+    _pCamera->ProcessMouseMovement(xoffset, yoffset);
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
@@ -270,7 +256,31 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-    camera->procesZoom(yoffset);
+    _pCamera->procesZoom(yoffset);
+}
+
+void keyboard_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if ((action == GLFW_PRESS) || (action == GLFW_REPEAT))
+    {
+        switch (key)
+        {
+        case GLFW_KEY_ESCAPE: //fallthrough
+        case GLFW_KEY_Q:
+            glfwSetWindowShouldClose(window, GLFW_TRUE);
+            break;
+
+        case GLFW_KEY_F:
+
+            static bool fullscreen = true; // says where i am switching to
+            const GLFWvidmode* pWindowMode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+
+            glfwSetWindowMonitor(window, fullscreen ? glfwGetPrimaryMonitor() : NULL, 0, 0, pWindowMode->width, pWindowMode->height, GLFW_DONT_CARE);
+
+            fullscreen = !fullscreen;
+            break;
+        }
+    }
 }
 
 void error_callback(int error, const char* description)
@@ -280,15 +290,13 @@ void error_callback(int error, const char* description)
 
 void processInput(GLFWwindow* window)
 {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-
+    // Movement
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera->ProcessKeyboard(CameraMovement::FORWARD, deltaTime);
+        _pCamera->ProcessKeyboard(CameraMovement::FORWARD, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera->ProcessKeyboard(CameraMovement::BACKWARD, deltaTime);
+        _pCamera->ProcessKeyboard(CameraMovement::BACKWARD, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera->ProcessKeyboard(CameraMovement::LEFT, deltaTime);
+        _pCamera->ProcessKeyboard(CameraMovement::LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera->ProcessKeyboard(CameraMovement::RIGHT, deltaTime);
+        _pCamera->ProcessKeyboard(CameraMovement::RIGHT, deltaTime);
 }

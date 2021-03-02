@@ -16,7 +16,7 @@
 class Skybox
 {
 public:
-    Skybox(std::vector<std::string> faces);
+    Skybox(std::string name);
 
     ~Skybox()
     {

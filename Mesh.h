@@ -24,7 +24,6 @@ struct Texture {
 class Mesh
 {
 public:
-
     Mesh(const std::vector<Vertex>& vertices, const std::vector<GLuint>& indices, const std::vector<Texture>& textures)
     {
         this->vertices = vertices;

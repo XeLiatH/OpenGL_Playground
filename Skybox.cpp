@@ -1,8 +1,18 @@
 #include "Skybox.h"
 
 
-Skybox::Skybox(std::vector<std::string> faces)
+Skybox::Skybox(std::string name)
 {
+    std::vector<std::string> faces
+    {
+        name + "/right.png",
+        name + "/left.png",
+        name + "/top.png",
+        name + "/bottom.png",
+        name + "/front.png",
+        name + "/back.png"
+    };
+
     this->LoadTextures(faces);
 
     float skyboxVertices[] = {

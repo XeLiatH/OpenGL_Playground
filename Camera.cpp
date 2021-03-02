@@ -19,9 +19,9 @@ void Camera::ProcessKeyboard(CameraMovement direction, float deltaTime)
     if (direction == CameraMovement::BACKWARD)
         this->position -= this->front * velocity;
     if (direction == CameraMovement::LEFT)
-        this->yaw -= 50.f * velocity;
+        this->position -= this->right * velocity;
     if (direction == CameraMovement::RIGHT)
-        this->yaw += 50.f * velocity;
+        this->position += this->right * velocity;
 
     this->position.y = 0.0f;
 
