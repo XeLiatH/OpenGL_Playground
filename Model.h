@@ -20,7 +20,8 @@ unsigned int loadTextureFromFile(const char* name, const std::string& directory)
 class Model
 {
 public:
-    Model(const char* filepath)
+    Model(const char* filepath, Shader& shader)
+        :shader(shader)
     {
         this->loadModel(filepath);
     }
@@ -30,15 +31,45 @@ public:
 
     }
 
-    void Draw(Shader& shader)
+    void Translate(glm::vec3 position)
+    {
+        this->shader.use();
+        model = glm::translate(model, position);
+
+        this->shader.setMat4("model", model);
+    }
+
+    void Rotate(float angle, glm::vec3 direction)
+    {
+        this->shader.use();
+        model = glm::rotate(model, glm::radians(angle), direction);
+
+        this->shader.setMat4("model", model);
+    }
+
+    void Scale(glm::vec3 scale)
+    {
+        this->shader.use();
+        model = glm::scale(model, scale);
+
+        this->shader.setMat4("model", model);
+    }
+
+    void Draw()
     {
         for (size_t i = 0; i < meshes.size(); i++)
         {
-            meshes[i].Draw(shader);
+            meshes[i].Draw(this->shader);
         }
+
+        this->model = glm::mat4(1.f);
     }
 
 private:
+    Shader& shader;
+
+    glm::mat4 model = glm::mat4(1.f);
+
     std::vector<Mesh> meshes;
     std::vector<Texture> texLoaded;
 

@@ -35,6 +35,8 @@
 #include "Camera.h";
 #include "Model.h";
 #include "Skybox.h";
+#include "Sun.h";
+#include "Flashlight.h";
 
 float _deltaTime = 0.0f;
 float _lastFrame = 0.0f;
@@ -76,7 +78,7 @@ int main()
     _lastX = width / 2;
     _lastY = height / 2;
 
-    _pCamera = new Camera(glm::vec3(0.f, 0.f, 10.f));
+    _pCamera = new Camera(glm::vec3(0.f, 1.f, 10.f));
 
     _pWindow = glfwCreateWindow(width, height, GAME_NAME, NULL, NULL);
     if (!_pWindow)
@@ -105,31 +107,50 @@ int main()
     glfwSetKeyCallback(_pWindow, keyboard_callback);
 
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-
     glm::mat4 view = glm::mat4(1.0f);
-    view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
-
-    glm::mat4 projection;
-    projection = glm::perspective(glm::radians(_pCamera->getFov()), (float)width / (float)height, 0.1f, 100.0f);
+    glm::mat4 projection = glm::mat4(1.0f);
 
     Shader shader("vertex.glsl", "fragment.glsl");
     Shader skyboxShader("skybox_vertex.glsl", "skybox_fragment.glsl");
 
-    shader.setMat4("model", model);
-    shader.setMat4("view", view);
+    Model backpack("models/backpack/backpack.obj", shader);
+    Model floorTile("models/floor_tile/floor.obj", shader);
+    Model gun("models/colt/colt.obj", shader);
+    Model lamp("models/lamp/lampada.obj", shader);
 
-    Model _model("models/backpack/backpack.obj");
-    Model _floor("models/floor_tile/floor.obj");
+    std::vector<glm::vec3> positions;
+    std::vector<Model> floor;
+
+    int a = 36;
+    int step = 6;
+
+    for (int i = -18; i <= a/2; i += step)
+    {
+        for (int j = -18; j <= a/2; j += step)
+        {
+            positions.push_back(glm::vec3((float)i, 0.f, (float)j));
+            floor.push_back(floorTile);
+        }
+    }
 
     glm::vec3 pointLightPositions[] = {
-        glm::vec3(0.7f,  0.2f,  2.0f),
-        glm::vec3(2.3f, -3.3f, -4.0f),
-        glm::vec3(-4.0f,  2.0f, -12.0f),
-        glm::vec3(0.0f,  0.0f, -3.0f)
+        glm::vec3(6.f,  1.f,  6.f),
+        glm::vec3(6.f, 1.f, -6.f),
+        glm::vec3(-6.f,  1.f, 6.0f),
+        glm::vec3(-6.0f,  1.f, -6.0f)
     };
 
+    int pointLightSize = sizeof(pointLightPositions) / sizeof(pointLightPositions[0]);
+
+    std::vector<Model> lamps;
+    for (size_t i = 0; i < pointLightSize; i++)
+    {
+        lamps.push_back(lamp);
+    }
+
     Skybox skybox(SKYBOX);
+    Sun* sun = new Sun(); // nechapu, proc nefunguje Sun sun();
+    Flashlight flashlight(_pCamera->getPosition(), _pCamera->getFront());
 
     while (!glfwWindowShouldClose(_pWindow))
     {
@@ -145,69 +166,60 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         shader.use();
-
         shader.setFloat("material.shininess", 32.0f);
-
-        // directional light
-        shader.setVec3("dirLight.direction", glm::vec3(-0.2f, -1.0f, -0.3f));
-        shader.setVec3("dirLight.ambient", glm::vec3(0.05f, 0.05f, 0.05f));
-        shader.setVec3("dirLight.diffuse", glm::vec3(0.4f, 0.4f, 0.4f));
-        shader.setVec3("dirLight.specular", glm::vec3(0.5f, 0.5f, 0.5f));
-        // spotLight
-        shader.setVec3("spotLight.position", _pCamera->getPosition());
-        shader.setVec3("spotLight.direction", _pCamera->getFront());
-        shader.setVec3("spotLight.ambient", glm::vec3(0.0f, 0.0f, 0.0f));
-        shader.setVec3("spotLight.diffuse", glm::vec3(1.0f, 1.0f, 1.0f));
-        shader.setVec3("spotLight.specular", glm::vec3(1.0f, 1.0f, 1.0f));
-        shader.setFloat("spotLight.constant", 1.0f);
-        shader.setFloat("spotLight.linear", 0.09);
-        shader.setFloat("spotLight.quadratic", 0.032);
-        shader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
-        shader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
-
-        shader.setVec3("light.position", _pCamera->getPosition());
-        shader.setVec3("light.direction", _pCamera->getFront());
-        shader.setFloat("light.cutOff", glm::cos(glm::radians(12.5f)));
-        shader.setFloat("light.outerCutOff", glm::cos(glm::radians(17.5f)));
-
-        shader.setVec3("light.ambient", glm::vec3(0.2f, 0.2f, 0.2f));
-        shader.setVec3("light.diffuse", glm::vec3(0.5f, 0.5f, 0.5f));
-        shader.setVec3("light.specular", 1.f * glm::vec3(1.f, 1.f, 1.f));
-
-        shader.setFloat("light.constant", 1.0f);
-        shader.setFloat("light.linear", 0.09f);
-        shader.setFloat("light.quadratic", 0.032f);
-
         shader.setVec3("view_position", _pCamera->getPosition());
-
+        
+        // Camera matrices
         view = _pCamera->getViewMatrix();
         shader.setMat4("view", view);
-
-        glm::mat4 projection = glm::perspective(glm::radians(_pCamera->getFov()), (float)width / (float)height, 0.1f, 100.0f);
+        projection = _pCamera->getProjectionMatrix((float)width, (float)height);
         shader.setMat4("projection", projection);
-
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
-        model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));	// it's a bit too big for our scene, so scale it down
-       
-        shader.setMat4("model", model);
-        _model.Draw(shader);
-
-        model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f)); // translate it down so it's at the center of the scene
-        model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));	// it's a bit too big for our scene, so scale it down
-
-        shader.setMat4("model", model);
-        _floor.Draw(shader);
-
-        view = glm::mat4(glm::mat3(_pCamera->getViewMatrix())); // remove translation from the view matrix
         
-        // draw skybox as last
-        glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
+        // Handle Lighting
+        flashlight.SetPosition(_pCamera->getPosition());
+        flashlight.SetDirection(_pCamera->getFront());
+
+        flashlight.Render(shader);
+        sun->Render(shader);
+
+        for (size_t i = 0; i < pointLightSize; i++)
+        {
+            shader.setVec3("pointLights[" + std::to_string(i) + "].position", pointLightPositions[i]);
+            shader.setVec3("pointLights[" + std::to_string(i) + "].ambient", glm::vec3(0.05f, 0.05f, 0.05f));
+            shader.setVec3("pointLights[" + std::to_string(i) + "].diffuse", glm::vec3(0.8f, 0.8f, 0.8f));
+            shader.setVec3("pointLights[" + std::to_string(i) + "].specular", glm::vec3(1.0f, 1.0f, 1.0f));
+            shader.setFloat("pointLights[" + std::to_string(i) + "].constant", 1.0f);
+            shader.setFloat("pointLights[" + std::to_string(i) + "].linear", 0.09);
+            shader.setFloat("pointLights[" + std::to_string(i) + "].quadratic", 0.032);
+            lamps.at(i).Translate(pointLightPositions[i] - glm::vec3(0.f, 1.f, 0.f));
+            lamps.at(i).Scale(glm::vec3(0.03f, 0.03f, 0.03f));
+            lamps.at(i).Draw();
+        }
+
+        // Render Blender models
+        backpack.Translate(glm::vec3(0.f, 2.f, 0.f));
+        backpack.Scale(glm::vec3(1.f, 1.f, 1.f));
+        backpack.Draw();
+
+        // Floor
+        for (size_t i = 0; i < floor.size(); i++)
+        {
+            floor.at(i).Translate(positions.at(i));
+            floor.at(i).Draw();
+        }
+
+        gun.Translate(glm::vec3(-3.0f, 2.f, 0.f));
+        gun.Scale(glm::vec3(0.5f, 0.5f, 0.5f));
+        gun.Draw();
+
+        // Render skybox
+        glDepthFunc(GL_LEQUAL);
         skyboxShader.use();
-        skyboxShader.setMat4("view", view);
+        skyboxShader.setMat4("view", glm::mat4(glm::mat3(view)));
         skyboxShader.setMat4("projection", projection);
 
         skybox.Draw(skyboxShader);
+        glDepthFunc(GL_LESS);
 
         // Checking events
         glfwSwapBuffers(_pWindow);

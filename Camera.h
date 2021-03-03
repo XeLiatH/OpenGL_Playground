@@ -26,6 +26,7 @@ public:
     glm::vec3 getFront() const;
 
     glm::mat4 getViewMatrix() const;
+    glm::mat4 getProjectionMatrix(float width, float height) const;
 
 private:
     glm::vec3 front = glm::vec3(0.f, 0.f, -1.f);

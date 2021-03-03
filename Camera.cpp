@@ -40,7 +40,7 @@ void Camera::ProcessMouseMovement(float xoffset, float yoffset, bool constrainPi
     if (constrainPitch)
     {
         if (this->pitch > 89.f) this->pitch = 89.f;
-        if (this->pitch < -89.f) this->pitch = -89.f;
+        if (this->pitch < -45.f) this->pitch = -45.f;
     }
 
     this->Update();
@@ -72,6 +72,11 @@ glm::vec3 Camera::getFront() const
 glm::mat4 Camera::getViewMatrix() const
 {
     return glm::lookAt(this->position, this->position + this->front, this->up);
+}
+
+glm::mat4 Camera::getProjectionMatrix(float width, float height) const
+{
+    return glm::perspective(glm::radians(this->getFov()), width / height, 0.1f, 100.0f);
 }
 
 void Camera::Update()
