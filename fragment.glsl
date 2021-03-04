@@ -78,7 +78,7 @@ void main()
     // phase 3: Spot light
     result += CalcFlashLight(flashlight, norm, fs_position, viewDir);
 
-    fs_color = vec4(result, 1.0);
+    fs_color = vec4(result, 1.f);
 }
 
 vec3 CalcSunLight(Sun light, vec3 normal, vec3 viewDir)

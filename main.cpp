@@ -37,6 +37,7 @@
 #include "Skybox.h";
 #include "Sun.h";
 #include "Flashlight.h";
+#include "Pointlight.h";
 
 float _deltaTime = 0.0f;
 float _lastFrame = 0.0f;
@@ -62,6 +63,26 @@ void keyboard_callback(GLFWwindow* window, int key, int scancode, int action, in
 void error_callback(int error, const char* description);
 
 void processInput(GLFWwindow* window);
+
+bool CheckCollision(Camera& camera, Model& model)
+{
+    // get center point circle first 
+    glm::vec2 center(camera.getPosition().x + camera.radius, camera.getPosition().z + camera.radius);
+    // calculate AABB info (center, half-extents)
+    glm::vec2 aabb_half_extents(model.size.x / 2.0f, model.size.z / 2.0f);
+    glm::vec2 aabb_center(
+        model.position.x + aabb_half_extents.x,
+        model.position.z + aabb_half_extents.y
+    );
+    // get difference vector between both centers
+    glm::vec2 difference = center - aabb_center;
+    glm::vec2 clamped = glm::clamp(difference, -aabb_half_extents, aabb_half_extents);
+    // add clamped value to AABB_center and we get the value of box closest to circle
+    glm::vec2 closest = aabb_center + clamped;
+    // retrieve vector between center circle and closest point AABB and check if length <= radius
+    difference = closest - center;
+    return glm::length(difference) < camera.radius;
+}
 
 int main()
 {
@@ -95,9 +116,13 @@ int main()
 
     glewInit();
     wglewInit();
-
+    
+    // transparency attempt
     glEnable(GL_DEPTH_TEST);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     glfwSetErrorCallback(error_callback);
     glfwSetFramebufferSizeCallback(_pWindow, framebuffer_size_callback);
@@ -117,9 +142,14 @@ int main()
     Model floorTile("models/floor_tile/floor.obj", shader);
     Model gun("models/colt/colt.obj", shader);
     Model lamp("models/lamp/lampada.obj", shader);
+    Model wall("models/wall/wall.obj", shader);
 
-    std::vector<glm::vec3> positions;
+    wall.size.x = 3.f;
+    wall.size.z = .3f;
+
+    // std::vector<Model> wall;
     std::vector<Model> floor;
+    std::vector<glm::vec3> positions;
 
     int a = 36;
     int step = 6;
@@ -133,18 +163,22 @@ int main()
         }
     }
 
+    // ... 
+
     glm::vec3 pointLightPositions[] = {
-        glm::vec3(6.f,  1.f,  6.f),
-        glm::vec3(6.f, 1.f, -6.f),
-        glm::vec3(-6.f,  1.f, 6.0f),
-        glm::vec3(-6.0f,  1.f, -6.0f)
+        glm::vec3(6.f,  0.5f,  6.f),
+        glm::vec3(6.f, 0.5f, -6.f),
+        glm::vec3(-6.f,  0.5f, 6.0f),
+        glm::vec3(-6.0f,  0.5f, -6.0f)
     };
 
     int pointLightSize = sizeof(pointLightPositions) / sizeof(pointLightPositions[0]);
 
+    std::vector<Pointlight> pointlights;
     std::vector<Model> lamps;
     for (size_t i = 0; i < pointLightSize; i++)
     {
+        pointlights.push_back(Pointlight(shader));
         lamps.push_back(lamp);
     }
 
@@ -162,7 +196,7 @@ int main()
         processInput(_pWindow);
 
         // Render
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClearColor(0.f, 0.f, 0.f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         shader.use();
@@ -184,20 +218,17 @@ int main()
 
         for (size_t i = 0; i < pointLightSize; i++)
         {
-            shader.setVec3("pointLights[" + std::to_string(i) + "].position", pointLightPositions[i]);
-            shader.setVec3("pointLights[" + std::to_string(i) + "].ambient", glm::vec3(0.05f, 0.05f, 0.05f));
-            shader.setVec3("pointLights[" + std::to_string(i) + "].diffuse", glm::vec3(0.8f, 0.8f, 0.8f));
-            shader.setVec3("pointLights[" + std::to_string(i) + "].specular", glm::vec3(1.0f, 1.0f, 1.0f));
-            shader.setFloat("pointLights[" + std::to_string(i) + "].constant", 1.0f);
-            shader.setFloat("pointLights[" + std::to_string(i) + "].linear", 0.09);
-            shader.setFloat("pointLights[" + std::to_string(i) + "].quadratic", 0.032);
-            lamps.at(i).Translate(pointLightPositions[i] - glm::vec3(0.f, 1.f, 0.f));
+            pointlights.at(i).setPosition(pointLightPositions[i]);
+            pointlights.at(i).Render(i);
+            lamps.at(i).Translate(pointLightPositions[i] - glm::vec3(0.f, 0.5f, 0.f));
             lamps.at(i).Scale(glm::vec3(0.03f, 0.03f, 0.03f));
             lamps.at(i).Draw();
         }
 
         // Render Blender models
-        backpack.Translate(glm::vec3(0.f, 2.f, 0.f));
+        float yValue = sin(glfwGetTime()) + 3.f;
+
+        backpack.Translate(glm::vec3(0.f, yValue, 0.f));
         backpack.Scale(glm::vec3(1.f, 1.f, 1.f));
         backpack.Draw();
 
@@ -208,9 +239,21 @@ int main()
             floor.at(i).Draw();
         }
 
-        gun.Translate(glm::vec3(-3.0f, 2.f, 0.f));
+        if (!wall.hasCollided) 
+        {
+            wall.Translate(glm::vec3(0.f, 0.f, 21.f));
+            wall.Scale(glm::vec3(1.f, 1.f, 1.f));
+            wall.Draw();
+        }
+
+        /*gun.Translate(glm::vec3(-3.0f, 2.f, 0.f));
         gun.Scale(glm::vec3(0.5f, 0.5f, 0.5f));
-        gun.Draw();
+        gun.Draw();*/
+
+        if (CheckCollision(*_pCamera, wall))
+        {
+            wall.hasCollided = true;
+        }
 
         // Render skybox
         glDepthFunc(GL_LEQUAL);

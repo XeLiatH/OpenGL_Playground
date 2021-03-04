@@ -20,6 +20,10 @@ unsigned int loadTextureFromFile(const char* name, const std::string& directory)
 class Model
 {
 public:
+    glm::vec3 size = glm::vec3(1.f, 1.f, 1.f);
+    glm::vec3 position;
+    bool hasCollided = false;
+
     Model(const char* filepath, Shader& shader)
         :shader(shader)
     {
@@ -35,6 +39,7 @@ public:
     {
         this->shader.use();
         model = glm::translate(model, position);
+        this->position = position;
 
         this->shader.setMat4("model", model);
     }

@@ -13,6 +13,8 @@ enum class CameraMovement { LEFT, RIGHT, FORWARD, BACKWARD };
 class Camera
 {
 public:
+    float radius = 1.f;
+
     Camera(glm::vec3 position = glm::vec3(0.f, 1.f, 3.f));
     ~Camera();
 
