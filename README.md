@@ -28,6 +28,9 @@
 
 ## Installation
 
+* Extract .zip file from v1.0 release
+* Run the .exe file
+
 ## Credit
 
 Thank you to [learnopengl.com](https://learnopengl.com/)
