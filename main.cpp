@@ -17,6 +17,8 @@
 #define SKYBOX "skybox_hot"
 
 #include <iostream>
+#include <thread>
+#include <mutex>
 
 #include <opencv2\opencv.hpp>
 
@@ -31,6 +33,8 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+
+#include "concurrentqueue.h";
 
 #include "Camera.h";
 #include "Model.h";
@@ -47,6 +51,15 @@ bool _mouseLeftPressed = false;
 float _lastX;
 float _lastY;
 
+cv::VideoCapture* _pCapture;
+static std::mutex _mu;
+static cv::Mat _img1, _img2, _img3;
+
+static moodycamel::ConcurrentQueue<cv::Point2i> ConcurrentQueuePoints;
+static moodycamel::ProducerToken producer_token(ConcurrentQueuePoints);
+static moodycamel::ConsumerToken consumer_token(ConcurrentQueuePoints);
+static std::atomic<bool> windowIsClosing = false;
+
 struct Light
 {
     glm::vec3 position = glm::vec3(1.2f, 1.0f, 2.0f);
@@ -54,6 +67,9 @@ struct Light
 
 GLFWwindow* _pWindow;
 Camera* _pCamera;
+
+void load_frames();
+cv::Point process_frame(cv::Mat& frame);
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -186,11 +202,35 @@ int main()
     Sun* sun = new Sun(); // nechapu, proc nefunguje Sun sun();
     Flashlight flashlight(_pCamera->getPosition(), _pCamera->getFront());
 
+    cv::VideoCapture capture = cv::VideoCapture("video.mkv");
+    _pCapture = &capture;
+
+    std::thread th;
+    std::atomic<cv::Mat*> currentImg = new cv::Mat;
+    cv::Point2i center;
+
+    _pCapture->read(_img1);
+    _pCapture->read(_img2);
+    _pCapture->read(_img3);
+    currentImg = &_img1;
+
+    th = std::thread(load_frames);
+    cv::Mat frame;
+
     while (!glfwWindowShouldClose(_pWindow))
     {
         float current_frame = glfwGetTime();
         _deltaTime = current_frame - _lastFrame;
         _lastFrame = current_frame;
+
+        frame = *currentImg;
+        if (frame.empty())
+        {
+            // glfwSetWindowShouldClose(this->window, true);
+            // break;
+        }
+
+        ConcurrentQueuePoints.try_dequeue(consumer_token, center);
 
         // Input
         processInput(_pWindow);
@@ -241,7 +281,7 @@ int main()
 
         if (!wall.hasCollided) 
         {
-            wall.Translate(glm::vec3(0.f, 0.f, 21.f));
+            wall.Translate(glm::vec3(0.f + center.x/800.f, 0.f, 21.f));
             wall.Scale(glm::vec3(1.f, 1.f, 1.f));
             wall.Draw();
         }
@@ -269,8 +309,90 @@ int main()
         glfwPollEvents();
     }
 
+    windowIsClosing = true;
+    th.join();
+
     glfwTerminate();
     return 0;
+}
+
+void load_frames()
+{
+    std::atomic<cv::Mat*> grabbed = new cv::Mat;
+
+    grabbed = &_img1;
+    bool grab_flag = false;
+
+    while (!windowIsClosing)
+    {
+        cv::Point2i centerPoint;
+        centerPoint = process_frame(*grabbed);
+
+        ConcurrentQueuePoints.try_enqueue(producer_token, centerPoint);
+
+        if (grabbed == &_img1)
+        {
+            grabbed = &_img2;
+            grab_flag = _pCapture->read(_img1);
+        }
+        else if (grabbed == &_img2)
+        {
+            grabbed = &_img3;
+            grab_flag = _pCapture->read(_img2);
+        }
+        else if (grabbed == &_img3)
+        {
+            grabbed = &_img1;
+            grab_flag = _pCapture->read(_img3);
+        }
+
+        if (!grab_flag)
+        {
+            std::cerr << "Cam disconnected or end of stream." << std::endl;
+            break;
+        }
+    }
+}
+
+cv::Point process_frame(cv::Mat& frame)
+{
+    double h_low = 128.0;
+    double s_low = 128.0;
+    double v_low = 128.0;
+    double h_hi = 255.0;
+    double s_hi = 255.0;
+    double v_hi = 255.0;
+    cv::Point result = { 0,0 };
+    int cnt = 0, sumX = 0, sumY = 0;
+
+    cv::Mat scene_hsv, scene_threshold;
+
+    cv::cvtColor(frame, scene_hsv, cv::COLOR_BGR2HSV);
+
+    cv::Scalar lower_threshold = cv::Scalar(h_low, s_low, v_low);
+    cv::Scalar upper_threshold = cv::Scalar(h_hi, s_hi, v_hi);
+    cv::inRange(scene_hsv, lower_threshold, upper_threshold, scene_threshold);
+
+    std::vector<cv::Point> whitePixels;
+    cv::findNonZero(scene_threshold, whitePixels);
+    cnt = whitePixels.size();
+
+    for (int i = 0; i < whitePixels.size(); i++)
+    {
+        cv::Point point;
+        point.x = whitePixels[i].x;
+        point.y = whitePixels[i].y;
+
+        sumX += point.x;
+        sumY += whitePixels[i].y;
+    }
+
+    _mu.lock();
+    result.x = cnt > 0 ? sumX / cnt : 0;
+    result.y = cnt > 0 ? sumY / cnt : 0;
+    _mu.unlock();
+
+    return result;
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)

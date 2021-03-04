@@ -167,6 +167,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="concurrentqueue.h" />
     <ClInclude Include="Flashlight.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="Model.h" />
